@@ -1,3 +1,4 @@
+
 # logs
 
 The application checks the changes in the file (/var/log/auth.log) and writes the data to the blockchain.
@@ -22,3 +23,4 @@ Changed the createAsset() and readAssetById() methods
 
 Изменены методы createAsset() и readAssetById()
 
+Блокчейн сеть должна быть основана на HLF2(Hyperleger Fabric 2.0).
