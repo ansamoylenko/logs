@@ -17,6 +17,7 @@ import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 
 import com.google.gson.Gson;
@@ -67,7 +68,7 @@ public final class App {
 	private static final String overrideAuth = "peer0.org1.example.com";
 
 	private final Contract contract;
-	private final String assetId = "asset" + Instant.now().toEpochMilli();
+	private String assetId = "asset" + Instant.now().toEpochMilli();
 	private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
 	public static void main(final String[] args) throws Exception {
@@ -82,11 +83,18 @@ public final class App {
 				.submitOptions(CallOption.deadlineAfter(5, TimeUnit.SECONDS))
 				.commitStatusOptions(CallOption.deadlineAfter(1, TimeUnit.MINUTES));
 
-		try (Gateway gateway = builder.connect()) {
-			new App(gateway).run();
-		} finally {
-			channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+		for(;;)
+		{
+			try (Gateway gateway = builder.connect()) {
+				new App(gateway).run();
+			} finally {
+				channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+			}
+
 		}
+
+
+
 	}
 
 	private static ManagedChannel newGrpcConnection() throws IOException, CertificateException {
@@ -124,47 +132,56 @@ public final class App {
 		contract = network.getContract(chaincodeName);
 	}
 
+
+
 	public void run() throws GatewayException, CommitException, IOException, InterruptedException {
 		// Initialize a set of asset data on the ledger using the chaincode 'InitLedger' function.
 		initLedger();
 
-
 		// Return all the current assets on the ledger.
-		getAllAssets();
+		//getAllAssets();
 
 		// Create a new asset on the ledger.
-
-
-		// Search for new logs
-		ArrayList<String> logs= Records.CheckFile(path,fileName);
-
-		if(!logs.isEmpty())
-		{
-			logs.forEach((log) -> {
-				try {
-					createAsset(log);
-				} catch (EndorseException e) {
-					throw new RuntimeException(e);
-				} catch (SubmitException e) {
-					throw new RuntimeException(e);
-				} catch (CommitStatusException e) {
-					throw new RuntimeException(e);
-				} catch (CommitException e) {
-					throw new RuntimeException(e);
-				}
-			});
-		}
+		for(String log: Records.CheckFile(path,fileName)) createAsset(log);
 
 
 
 		// Update an existing asset asynchronously.
-		transferAssetAsync();
+		//transferAssetAsync();
 
 		// Get the asset details by assetID.
 		readAssetById();
 
 		// Update an asset which does not exist.
-		updateNonExistentAsset();
+		//updateNonExistentAsset();
+	}
+
+	/**
+	 * Submit a transaction synchronously, blocking until it has been committed to
+	 * the ledger.
+	 */
+
+	private void createAsset(String log) throws EndorseException, SubmitException, CommitStatusException, CommitException {
+		assetId = "asset" + Instant.now().toEpochMilli();
+		System.out.println("\n--> Submit Transaction: CreateAsset, creates new asset with ID " + assetId);
+
+
+		contract.submitTransaction("CreateAsset", assetId, log);
+
+		System.out.println("*** Transaction committed successfully");
+	}
+
+	private void readAssetById() throws GatewayException
+	{
+		System.out.println("\n--> Evaluate Transaction: ReadAsset, function returns asset attributes");
+
+		Scanner in = new Scanner(System.in);
+		System.out.print("Input a assetId: ");
+		String id = in.next();
+		in.close();
+
+		byte[] evaluateResult = contract.evaluateTransaction("ReadAsset", id);
+		System.out.println("*** Result:" + prettyJson(evaluateResult));
 	}
 	
 	/**
@@ -200,26 +217,6 @@ public final class App {
 		return gson.toJson(parsedJson);
 	}
 
-	/**
-	 * Submit a transaction synchronously, blocking until it has been committed to
-	 * the ledger.
-	 */
-//	private void createAsset() throws EndorseException, SubmitException, CommitStatusException, CommitException {
-//		System.out.println("\n--> Submit Transaction: CreateAsset, creates new asset with ID, Color, Size, Owner and AppraisedValue arguments");
-//
-//		contract.submitTransaction("CreateAsset", assetId, "yellow", "5", "Tom", "1300");
-//
-//		System.out.println("*** Transaction committed successfully");
-//	}
-
-
-	private void createAsset(String log) throws EndorseException, SubmitException, CommitStatusException, CommitException {
-		System.out.println("\n--> Submit Transaction: CreateAsset, creates new asset with ID " + assetId);
-
-		contract.submitTransaction("CreateAsset", assetId, log);
-
-		System.out.println("*** Transaction committed successfully");
-	}
 
 	/**
 	 * Submit transaction asynchronously, allowing the application to process the
@@ -250,13 +247,7 @@ public final class App {
 		System.out.println("*** Transaction committed successfully");
 	}
 
-	private void readAssetById() throws GatewayException {
-		System.out.println("\n--> Evaluate Transaction: ReadAsset, function returns asset attributes");
-		
-		byte[] evaluateResult = contract.evaluateTransaction("ReadAsset", assetId);
-		
-		System.out.println("*** Result:" + prettyJson(evaluateResult));
-	}
+
 
 	/**
 	 * submitTransaction() will throw an error containing details of any error

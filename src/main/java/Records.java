@@ -58,9 +58,7 @@ public class Records
         }
         key.reset();
 
-        //GetLastRecords(file,nom).forEach(System.out::println);
-       // GetLastRecords(file,nom).forEach((log) - creareAsset);
-        //createAsset();
+        GetLastRecords(file,nom).forEach(System.out::println);
 
         return (ArrayList<String>)GetLastRecords(file,nom);
 
