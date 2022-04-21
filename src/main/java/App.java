@@ -93,8 +93,6 @@ public final class App {
 
 		}
 
-
-
 	}
 
 	private static ManagedChannel newGrpcConnection() throws IOException, CertificateException {
@@ -144,14 +142,12 @@ public final class App {
 		// Create a new asset on the ledger.
 		for(String log: Records.CheckFile(path,fileName)) createAsset(log);
 
+		// Get the asset details by assetID.
+		readAssetById();
 
 
 		// Update an existing asset asynchronously.
 		//transferAssetAsync();
-
-		// Get the asset details by assetID.
-		readAssetById();
-
 		// Update an asset which does not exist.
 		//updateNonExistentAsset();
 	}
